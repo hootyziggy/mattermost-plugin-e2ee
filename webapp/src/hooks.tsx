@@ -25,6 +25,7 @@ import {observeStore, isValidUsername} from './utils';
 import {MyActionResult, PubKeysState} from './types';
 import {pubkeyStore, getNewChannelPubkeys, storeChannelPubkeys} from './pubkeys_storage';
 import {getE2EEPostUpdateSupported} from './compat';
+import {encryptAttachment} from './attachments';
 import {shouldNotify} from './notifications';
 import {sendDesktopNotification} from './notification_actions';
 
@@ -49,6 +50,18 @@ export default class E2EEHooks {
     }
 
     register(registry: PluginRegistry) {
+        registry.registerFilesWillUploadHook((files, uploadFiles) => {
+            const channelID = getCurrentChannelId(this.store.getState());
+            this.prepareUploads(files, channelID).then((encrypted) => {
+                if (getCurrentChannelId(this.store.getState()) !== channelID) {
+                    throw new Error('Channel changed while encrypting; please upload again');
+                }
+                uploadFiles(encrypted);
+            }).catch((error) => {
+                this.sendEphemeralPost('Upload cancelled: ' + error.message, channelID);
+            });
+            return {files: []};
+        });
         registry.registerMessageWillBePostedHook(this.messageWillBePosted.bind(this));
         if (getE2EEPostUpdateSupported()) {
             registry.registerMessageWillBeUpdatedHook(this.messageWillBeUpdated.bind(this));
@@ -67,6 +80,29 @@ export default class E2EEHooks {
             'Toggle channel encryption',
             'Toggle channel encryption',
         );
+    }
+
+    private async prepareUploads(files: File[], channelID: string): Promise<File[]> {
+        const {data: method, error} = await this.dispatch(getChannelEncryptionMethod(channelID));
+        if (error) {
+            throw new Error('Unable to check channel encryption status');
+        }
+        if (method === E2EE_CHAN_ENCR_METHOD_NONE) {
+            return files;
+        }
+        const key = selectPrivkey(this.store.getState());
+        if (!key) {
+            throw new Error('Run /e2ee init or import your private key before uploading');
+        }
+        const {data: users, error: userError} = await this.getUserIdsInChannel(channelID);
+        if (userError) {
+            throw new Error('Unable to load channel members');
+        }
+        const {data: keys, error: keyError} = await this.dispatch(getPubKeys(users));
+        if (keyError || !keys || !keys.size || !this.verifyUsernamesInChannel(channelID)) {
+            throw new Error('Unable to verify attachment recipients');
+        }
+        return Promise.all(files.map((file) => encryptAttachment(file, getCurrentUserId(this.store.getState()), key, Array.from(keys.values()))));
     }
 
     private async onPosted(message: any) {
@@ -250,13 +286,19 @@ export default class E2EEHooks {
     }
 
     private async getUserIdsInChannel(chanID: string): Promise<MyActionResult> {
-        const {data, error} = await this.dispatch(UserActions.getProfilesInChannel(chanID, 0));
-        if (error) {
-            return {error};
+        const users = new Set<string>();
+        for (let page = 0; ; page++) {
+            // eslint-disable-next-line no-await-in-loop
+            const {data, error} = await this.dispatch(UserActions.getProfilesInChannel(chanID, page, 200));
+            if (error) {
+                return {error};
+            }
+            data.forEach((profile: UserProfile) => users.add(profile.id));
+            if (data.length < 200) {
+                break;
+            }
         }
-        const profilesInChannel = this.getProfilesInChannel(this.store.getState(), chanID, {active: true});
-
-        return {data: profilesInChannel.map((v: UserProfile) => v.id)};
+        return {data: Array.from(users)};
     }
 
     private async encryptPost(post: Post, isUpdate = false): Promise<{post: Post} | {error: {message: string}}> {
@@ -291,7 +333,7 @@ export default class E2EEHooks {
             if (errPK) {
                 return {error: {message: 'Unable to get the public keys of the channel members: ' + errPK}};
             }
-            if (pubkeys.length === 0) {
+            if (pubkeys.size === 0) {
                 return {error: {message: 'Noone in this channel has a public key to encrypt for!'}};
             }
 

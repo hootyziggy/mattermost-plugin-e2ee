@@ -2,14 +2,14 @@ package main
 
 import (
 	"bytes"
-	"crypto/elliptic"
+	"crypto/ecdsa"
 	"crypto/rand"
 	"encoding/json"
 	"math/big"
 	"testing"
 
-	"github.com/mattermost/mattermost-server/v5/model"
-	"github.com/mattermost/mattermost-server/v5/plugin/plugintest"
+	"github.com/mattermost/mattermost/server/public/model"
+	"github.com/mattermost/mattermost/server/public/plugin/plugintest"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -27,11 +27,11 @@ func SerializePubKey(x *big.Int, y *big.Int) []byte {
 }
 
 func GenerateValidPubKey() PubKey {
-	_, x0, y0, _ := elliptic.GenerateKey(ECCurve, rand.Reader)
-	_, x1, y1, _ := elliptic.GenerateKey(ECCurve, rand.Reader)
+	key0, _ := ecdsa.GenerateKey(ECCurve, rand.Reader)
+	key1, _ := ecdsa.GenerateKey(ECCurve, rand.Reader)
 	return PubKey{
-		SerializePubKey(x0, y0),
-		SerializePubKey(x1, y1),
+		SerializePubKey(key0.X, key0.Y),
+		SerializePubKey(key1.X, key1.Y),
 	}
 }
 
@@ -121,7 +121,7 @@ func Test_pubkey_channelsMembersWithoutKeys(t *testing.T) {
 		},
 	})
 
-	mockAPI.On("GetChannelMembers", chanID, 0, maxUsersPerTeam).Return(&model.ChannelMembers{
+	mockAPI.On("GetChannelMembers", chanID, 0, maxUsersPerTeam).Return(model.ChannelMembers{
 		{
 			UserId: "user1",
 		},

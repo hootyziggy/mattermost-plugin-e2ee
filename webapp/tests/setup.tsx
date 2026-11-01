@@ -1,4 +1,3 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
-// See LICENSE.txt for license information.
+import {TextEncoder, TextDecoder} from 'util';
 
-import 'mattermost-webapp/tests/setup';
+Object.assign(global, {TextEncoder, TextDecoder});

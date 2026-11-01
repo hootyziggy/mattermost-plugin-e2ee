@@ -149,12 +149,21 @@ Private messages work like the other channels, and the same commands can be used
 
 ## Known limitations
 
-### Files/attachments not encrypted
+### Encrypted attachments
 
-For now, files & attachments are **not encrypted**. This will be done in future
-releases (if possible).
+On Mattermost 12.0.1, uploads in E2EE channels are encrypted in your browser,
+including the original filename and MIME type. The server stores an opaque
+`encrypted.e2ee` file. Use **Decrypt and download attachment** on an encrypted
+post to verify the sender and recover the original file. A normal Mattermost
+file download returns ciphertext. Original filenames are restored only by the
+E2EE download control; inline image/video previews and server-side file search
+are unavailable. The current limit is **20 MiB per original file**. Encryption
+adds roughly one third to the upload size, so the server upload limit also applies.
 
-Progress on this issue is tracked in [#7](https://github.com/quarkslab/mattermost-plugin-e2ee/issues/7).
+Only channel members whose public keys are available at upload time can decrypt
+the file. New members cannot decrypt old attachments. Existing plaintext uploads
+are not retroactively encrypted; upload them again with E2EE enabled. Clients
+without this web plugin cannot upload plaintext files into an encrypted channel.
 
 ### Webapp integrity
 
@@ -196,48 +205,19 @@ plugins](https://github.com/mattermost/mattermost-webapp/blob/ce2962001c11d7a55c
 
 Progress on this issue is tracked in [#1](https://github.com/quarkslab/mattermost-plugin-e2ee/issues/1).
 
-### Unable to update messages (Mattermost < 6.1 && >= 6.4)
+### Editing encrypted messages on Mattermost 12.0.1
 
-**Note**: this limitation only exists if you use Mattermost < 6.1 or >= 6.4
+Use **Edit encrypted message** below your own decrypted post, then **Save
+encrypted edit**. Edits are encrypted in the browser for the channel's current
+members with known keys, and existing attachments are preserved. Files keep their
+original recipients when the message text is edited. Server editing permissions
+and time limits still apply. The edit stays encrypted even if channel encryption
+has subsequently been turned off.
 
-Due to a [limitation in
-Mattermost < 6.1](https://github.com/mattermost/mattermost-server/issues/18320), it
-is not possible in these versions for a webapp plugin to intercept message modifications.
-Thus, we are not able to encrypt the modified message before it is transmitted
-to the server.
-
-For Mattermost versions >= 6.4, there are two problems. The first one is for
-versions 6.4 & 6.5. Indeed, [this
-commit](https://github.com/mattermost/mattermost-webapp/commit/8a925e8f95f9a8e9b81512de8203c7163c5d1eea)
-introduces a "regression" (whether this is a regression or not depends on the
-semantics of [this plugin
-interface](https://developers.mattermost.com/integrate/plugins/webapp/reference/#registerMessageWillBeUpdatedHook),
-which isn't clear), and removes posts "properties" while updating messages,
-which we use to store the actual encrypted message. That's why modifying a
-message won't work for these two versions. That being said, it won't leak the
-decrypted message to the server, so we keep it this way not to break
-threads/replies (see below). The second one is for versions >= 6.6. The editing
-post widget has been fully rewritten with an "inline" mode. Unfortunately, this
-rewrite completely forgot to call update hooks, so we are back to the pre-6.1
-behavior :(
-
-So, for versions < 6.1 and >= 6.6, if you try to modify a message, you will be
-prompted with a warning message instead of the original one. We've done this to
-prevent accidental leakage of decrypted messages to the server. Indeed, when
-you click on the `Save` button, the content of the modified message is sent in
-plain text to the server.
-
-### Broken thread/reply UI (Mattermost < 6.1 && >= 6.6)
-
-**Note**: this limitation only exists if you use Mattermost < 6.1 or >= 6.6
-(see above for explanation about this regression).
-
-Due to the previous limitation, when you reply to an encrypted message, the
-warning message discussed above will be shown instead of the decrypted one:
-
-<div align="center" width="100%">
-  <img width="60%" src="docs/thread_reply.png" />
-</div>
+The regular Mattermost editor does not invoke encryption hooks in this version.
+It shows the encrypted placeholder; use the E2EE edit control instead. The server
+rejects plaintext changes to encrypted posts. Decrypted message text stays in the
+plugin's local rendering state, rather than Mattermost's shared post object.
 
 ## Development
 
@@ -245,43 +225,34 @@ This section describes how to setup a development environment.
 
 ### Environment
 
-We make a build environment based on Mattermost's [local node docker](https://docs.mattermost.com/install/setting-up-local-machine-using-docker.html).
+This version targets **Mattermost 12.0.1 or later**, uses its public Go SDK pinned
+to the 12.0.1 source commit, and requires **Go 1.26.10+** and **Node.js 22+**
+(Node 24 is selected in `.nvmrc`). Install and verify dependencies with:
 
-We adapt the `mattermost/mattermost-preview` image to add various things:
-
-* enable the creation of tokens
-* enable the creation of accounts without invitations
-
-The provided `docker/Dockerfile` will create a new docker image with these modifications.
-
-First, build the image:
-
-```
-$ cd docker && docker build -t matterdev .
-```
-
-Then, run the Mattermost instance. We need to mount `/var/tmp` as an external
-volume to get a Mattermost unix socket that will help to easily deploy our plugin:
-
-```
-$ cd /path/to/project
-$ docker run --name mminstance -d --publish 8065:8065 --add-host dockerhost:127.0.0.1 matterdev
+```sh
+(cd webapp && npm ci)
+go mod download
+(cd build && go mod download)
+go test -race ./server/...
+(cd build && go test ./...)
+(cd webapp && npm run test-ci && npm run check-types && npm run lint)
+make dist
 ```
 
-It takes a few minutes to boot. You can then access the instance at `http://127.0.0.1:8065`. Create a user and a team.
+The full `make` target also runs golangci-lint 2.15.0 with the migrated v2
+configuration. CI uses Go 1.27.3 and the frozen npm lockfile.
 
-The next step is to create a user token. Go to `Account Settings`, `Security` and
-add a new personal token. This is needed to deploy the plugin (see below).
-
-To rerun the docker container (if stopped), just do `docker start mminstance`. To
-run a shell within this container, you can do `docker exec -it mminstance
-/bin/bash`.
+The bundle is generated at `dist/com.quarkslab.e2ee-0.10.0.tar.gz`.
+Install it on a Mattermost 12.0.1 development server with plugin uploads enabled.
+For local-mode deployment, enable `ServiceSettings.EnableLocalMode` and set
+`MM_LOCALSOCKETPATH` to the server's Unix socket. For remote deployment use
+`MM_SERVICESETTINGS_SITEURL` and `MM_ADMIN_TOKEN`. Keep credentials out of Git.
 
 ### Deploying
 
 Based on [these instructions](https://github.com/mattermost/mattermost-plugin-starter-template#deploying-with-local-mode).
 
-First, copy `dev.env.example` into `dev.example`, and setup the user token you
+First, copy `dev.env.example` into `dev.env`, and setup the user token you
 just created above. Then:
 
 ```

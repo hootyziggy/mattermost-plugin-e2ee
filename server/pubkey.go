@@ -1,13 +1,14 @@
 package main
 
 import (
+	"crypto/ecdh"
 	"crypto/elliptic"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
 
-	"github.com/mattermost/mattermost-server/v5/model"
+	"github.com/mattermost/mattermost/server/public/model"
 )
 
 var ECCurve = elliptic.P256()
@@ -64,17 +65,12 @@ func ValidateECPoint(data []byte) *ECPoint {
 		return nil
 	}
 
-	if !ECCurve.IsOnCurve(&x, &y) {
+	// P-256 has cofactor one. The standard parser validates the point and
+	// rejects invalid encodings and the point at infinity.
+	if _, err := ecdh.P256().NewPublicKey(data); err != nil {
 		return nil
 	}
 
-	// Check that N*P == 0
-	Nbytes := make([]byte, CL)
-	N.FillBytes(Nbytes)
-	tx, ty := ECCurve.ScalarMult(&x, &y, Nbytes)
-	if tx.Cmp(zero) != 0 || ty.Cmp(zero) != 0 {
-		return nil
-	}
 	return &ECPoint{x, y}
 }
 
@@ -138,7 +134,7 @@ func (p *Plugin) GetChannelMembersWithoutKeys(chanID string) ([]string, *model.A
 		return ret, appErr
 	}
 
-	for _, member := range *members {
+	for _, member := range members {
 		userID := member.UserId
 		hasKey, appErr := p.HasUserPubKey(userID)
 		if appErr != nil {

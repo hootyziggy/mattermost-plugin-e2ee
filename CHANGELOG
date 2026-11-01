@@ -1,3 +1,14 @@
+0.10.0 (01/11/2026)
+-----
+
+* Target Mattermost 12.0.1 using its public server SDK.
+* Edit encrypted messages with the plugin's Edit encrypted message control.
+* Encrypt file contents, filenames, and MIME types before upload; verify and
+  decrypt attachments in the browser before download (20 MiB original file limit).
+* Reject plaintext edits to encrypted messages and plaintext uploads in E2EE channels.
+* Keep decrypted messages out of Mattermost's shared post objects.
+* Update Node/WebCrypto dependencies, Go tooling, lint configuration, and CI.
+
 0.9.1 (19/05/2022)
 -----
 

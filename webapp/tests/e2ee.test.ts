@@ -1,7 +1,5 @@
 /* eslint-disable no-await-in-loop */
 
-import 'mattermost-webapp/tests/setup';
-
 import {webcrypto} from '../src/webcrypto';
 import {EncryptedP2PMessage, PrivateKeyMaterial, PublicKeyMaterial, getPubkeyID, E2EEValidationError, isEncryptedP2PMessageJSON} from '../src/e2ee';
 
@@ -107,7 +105,7 @@ test('e2ee/jsonPriv', async () => {
     const jsonable = await own.jsonable(true /* b64 */);
     const own2 = await PrivateKeyMaterial.fromJsonable(jsonable, true /* b64 */, true /* exportable */);
 
-    expect(own2).toStrictEqual(own);
+    expect(await own2.jsonable(true)).toStrictEqual(await own.jsonable(true));
     expect(await own2.jsonable(true)).toStrictEqual(jsonable);
 });
 

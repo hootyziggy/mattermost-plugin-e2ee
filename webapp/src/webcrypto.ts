@@ -1,14 +1,6 @@
 /* eslint-disable global-require */
-
 import {isNode} from './utils';
 
-let webcrypto: Crypto;
-
-if (isNode) {
-    const WebCrypto = require('node-webcrypto-ossl');
-    webcrypto = new WebCrypto.Crypto();
-} else {
-    webcrypto = window.crypto;
-}
-
+// Use the same standard WebCrypto API in browsers and modern Node test runs.
+const webcrypto: Crypto = isNode ? require('crypto').webcrypto : window.crypto;
 export {webcrypto};

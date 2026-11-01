@@ -1,4 +1,3 @@
-import 'mattermost-webapp/tests/setup';
 import {UserProfile} from 'mattermost-redux/types/users';
 
 import {shouldNotify} from '../src/notifications';

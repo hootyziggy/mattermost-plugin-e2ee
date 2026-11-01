@@ -6,8 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/mattermost/mattermost-server/v5/model"
-	"github.com/mattermost/mattermost-server/v5/plugin/plugintest"
+	"github.com/mattermost/mattermost/server/public/model"
+	"github.com/mattermost/mattermost/server/public/plugin/plugintest"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/quarkslab/mattermost-plugin-e2ee/server/testutils"
@@ -249,7 +249,7 @@ func mockAPISetChannelEncryptionSuccess(mockAPI *plugintest.API, chanID string, 
 	maxUsersPerTeam := 100
 	mockAPI.On("GetConfig").Return(&model.Config{TeamSettings: model.TeamSettings{MaxUsersPerTeam: &maxUsersPerTeam}})
 	mockAPI.On("GetChannelMembers", chanID, 0, maxUsersPerTeam).Return(
-		&model.ChannelMembers{
+		model.ChannelMembers{
 			{UserId: userID},
 			{UserId: "userNoKey"}}, nil)
 

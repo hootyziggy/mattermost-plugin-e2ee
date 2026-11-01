@@ -1,4 +1,3 @@
-import 'mattermost-webapp/tests/setup';
 
 import {PrivateKeyMaterial, PublicKeyMaterial, E2EEValidationError} from '../src/e2ee';
 import {encryptPost, decryptPost} from '../src/e2ee_post';

@@ -1,4 +1,3 @@
-import 'mattermost-webapp/tests/setup';
 import {jest} from '@jest/globals';
 
 import {pubkeyStore, getNewChannelPubkeys, storeChannelPubkeys} from '../src/pubkeys_storage';

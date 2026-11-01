@@ -9,7 +9,9 @@ const {formatText, messageHtmlToComponent} = window.PostUtils;
 import {decryptPost} from 'e2ee_post';
 import {E2EEUnknownRecipient} from 'e2ee';
 import {msgCache} from 'msg_cache';
-import {getE2EEPostUpdateSupported} from 'compat';
+
+import EncryptedEditor from './editor';
+import EncryptedAttachments from './attachments';
 
 import {E2EEPostProps} from './index';
 import './e2ee_post.css';
@@ -17,7 +19,8 @@ import './e2ee_post.css';
 export const E2EEPost: React.FC<E2EEPostProps> = (props) => {
     const {post, privkey, currentUserID, actions} = props;
 
-    const [msgText, setMsgText] = useState('');
+    const [msgText, setMsgText] = useState<React.ReactNode>('');
+    const [plaintext, setPlaintext] = useState<string | null>(null);
     const [headerClasses, setHeaderClasses] = useState('e2ee_post_header');
     const [postClasses, setPostClasses] = useState('e2ee_post_body');
 
@@ -33,6 +36,7 @@ export const E2EEPost: React.FC<E2EEPostProps> = (props) => {
     };
 
     const setMsgSuccess = (text: string) => {
+        setPlaintext(text);
         if (text.length > 0) {
             const ftxt = messageHtmlToComponent(formatText(text, formatOptions), false, componentOptions);
             setMsgText(ftxt);
@@ -42,28 +46,30 @@ export const E2EEPost: React.FC<E2EEPostProps> = (props) => {
             setHeaderClasses('e2ee_post_header e2ee__hidden');
             setPostClasses('e2ee_post_body e2ee__hidden');
         }
-        if (getE2EEPostUpdateSupported()) {
-            post.message = text;
-        } else {
-            post.message = "WARNING: if you read this text, it's probably because you are trying to edit an encrypted message. This is currently not possible. Indeed, the text saved in this box will be saved on the server unencrypted. It is due to a limitation in what plugins can do in Mattermost that will hopefully be fixed.";
-        }
     };
 
     const setMsgError = (text: string) => {
+        setPlaintext(null);
         setMsgText(text);
         setPostClasses('e2ee_post_body e2ee__error');
         setHeaderClasses('e2ee_post_header e2ee__error');
     };
 
     useEffect(() => {
+        let active = true;
+        setPlaintext(null);
         if (privkey == null) {
             setMsgError('e2ee needs to be setup');
-            return;
+            return () => {
+                active = false;
+            };
         }
         const msgCached = msgCache.get(post);
         if (msgCached !== null) {
             setMsgSuccess(msgCached);
-            return;
+            return () => {
+                active = false;
+            };
         }
 
         setMsgText('');
@@ -75,6 +81,9 @@ export const E2EEPost: React.FC<E2EEPostProps> = (props) => {
             // checker (cf. MyActionResult)
             // @ts-ignore
             then(({data: reskey, error}) => {
+                if (!active) {
+                    return;
+                }
                 if (error) {
                     throw error;
                 }
@@ -84,10 +93,16 @@ export const E2EEPost: React.FC<E2EEPostProps> = (props) => {
                 }
                 decryptPost(post.props.e2ee, senderkey, privkey).
                     then((decrMsg) => {
+                        if (!active) {
+                            return;
+                        }
                         msgCache.addDecrypted(post, decrMsg);
                         setMsgSuccess(decrMsg);
                     }).
                     catch((e) => {
+                        if (!active) {
+                            return;
+                        }
                         if (e instanceof E2EEUnknownRecipient) {
                             setMsgError("This message hasn't been encrypted for us");
                         } else {
@@ -96,14 +111,33 @@ export const E2EEPost: React.FC<E2EEPostProps> = (props) => {
                     });
             }).
             catch((e) => {
-                setMsgError('Error while getting identity of sender: ' + e.message);
+                if (active) {
+                    setMsgError('Error while getting identity of sender: ' + e.message);
+                }
             });
+        return () => {
+            active = false;
+        };
     }, [post, privkey, actions]);
 
     return (
         <div className='e2ee_post'>
             <div className={headerClasses}>{'🔐'}</div>
             <div className={postClasses}>{msgText}</div>
+            {privkey && plaintext !== null && post.user_id === currentUserID && (
+                <EncryptedEditor
+                    post={post}
+                    text={plaintext}
+                    privkey={privkey}
+                    getPubKeys={actions.getPubKeys}
+                    onSaved={setMsgSuccess}
+                />
+            )}
+            <EncryptedAttachments
+                post={post}
+                privkey={privkey}
+                getPubKeys={actions.getPubKeys}
+            />
         </div>
     );
 };

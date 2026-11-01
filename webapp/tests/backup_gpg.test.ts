@@ -1,4 +1,3 @@
-import 'mattermost-webapp/tests/setup';
 
 import {gpgEncrypt, gpgBackupFormat, gpgParseBackup} from '../src/backup_gpg';
 import {PrivateKeyMaterial} from '../src/e2ee';
@@ -13,7 +12,7 @@ test('e2ee/backupGPGFormat', async () => {
     const backupStr = await gpgBackupFormat(privkey);
     const restored = await gpgParseBackup(backupStr, true /* exportable */);
 
-    expect(restored).toStrictEqual(privkey);
+    expect(await restored.jsonable(true)).toStrictEqual(await privkey.jsonable(true));
 });
 
 test('e2ee/backupGPGRestore', async () => {

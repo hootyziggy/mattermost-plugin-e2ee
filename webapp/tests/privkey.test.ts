@@ -1,7 +1,6 @@
 import * as openpgp from 'openpgp';
 import {jest} from '@jest/globals';
 
-import 'mattermost-webapp/tests/setup';
 import {Client4} from 'mattermost-redux/client';
 import {ClientError} from 'mattermost-redux/client/client4';
 

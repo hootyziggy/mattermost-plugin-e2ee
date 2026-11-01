@@ -1,6 +1,7 @@
 const exec = require('child_process').exec;
 
 const path = require('path');
+const TerserPlugin = require('terser-webpack-plugin');
 
 const PLUGIN_ID = require('../plugin.json').id;
 
@@ -90,13 +91,12 @@ module.exports = {
         'prop-types': 'PropTypes',
         'react-bootstrap': 'ReactBootstrap',
         'react-router-dom': 'ReactRouterDom',
-        'node-webcrypto-ossl': {
-            commonjs: 'node-webcrypto-ossl',
-        },
+        crypto: 'commonjs crypto',
         'fake-indexeddb': {
             commonjs: 'fake-indexeddb',
         },
     },
+    optimization: {minimizer: [new TerserPlugin({cache: false, parallel: 2})]},
     output: {
         devtoolNamespace: PLUGIN_ID,
         path: path.join(__dirname, '/dist'),

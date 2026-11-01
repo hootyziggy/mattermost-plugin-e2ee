@@ -152,10 +152,10 @@ export interface PluginRegistry {
     // Returns a unique identifier.
     registerFilesWillUploadHook(hook: (
         inFiles: File[],
-        upload: (files: FileInfo) => void
+        upload: (files: File[]) => void
     ) => {
-        message: string | null,
-        files: FileInfo[],
+        message?: string | null,
+        files: File[],
     }): UniqueIdentifier;
 
     // Unregister a component, action or hook using the unique identifier returned after registration.

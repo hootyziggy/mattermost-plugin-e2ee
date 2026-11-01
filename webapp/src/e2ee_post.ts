@@ -23,7 +23,7 @@ export async function encryptPost(post: Post, privkey: PrivateKeyMaterial, pubke
     const postMsg = new UtilTextEncoder().encode(post.message);
     const encrMsg = await EncryptedP2PMessage.encrypt(postMsg, privkey, pubkeys);
     const encrMsgJson = await encrMsg.jsonable(true /* encb64 */);
-    post.props = {e2ee: encrMsgJson};
+    post.props = {...post.props, e2ee: encrMsgJson};
     post.message = 'Encrypted message';
 
     // TODO: AG: TS isn't happy here because PostType is a fixed set of string

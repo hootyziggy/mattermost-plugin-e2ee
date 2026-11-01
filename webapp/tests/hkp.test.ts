@@ -1,5 +1,4 @@
 import {jest} from '@jest/globals';
-import 'mattermost-webapp/tests/setup';
 
 import HKP from '../src/hkp';
 

@@ -1,4 +1,3 @@
-import 'mattermost-webapp/tests/setup';
 import {MsgCacheImpl} from '../src/msg_cache';
 
 test('e2ee/msgMine', async () => {

@@ -1,4 +1,3 @@
-import 'mattermost-webapp/tests/setup';
 import {KeyStore, KeyStoreError} from '../src/keystore';
 import {webcrypto} from '../src/webcrypto';
 
