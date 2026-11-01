@@ -248,6 +248,17 @@ For local-mode deployment, enable `ServiceSettings.EnableLocalMode` and set
 `MM_LOCALSOCKETPATH` to the server's Unix socket. For remote deployment use
 `MM_SERVICESETTINGS_SITEURL` and `MM_ADMIN_TOKEN`. Keep credentials out of Git.
 
+### Publishing an installable release
+
+Run **Actions > Build installable plugin release > Run workflow** with an existing
+version tag. The workflow tests and builds that tag, verifies every compiled path
+in `plugin.json`, and attaches the plugin `.tar.gz` plus `SHA256SUMS` before
+publishing the release. It uses the repository's standard Actions token.
+
+Upload the named `com.quarkslab.e2ee-VERSION.tar.gz` release asset to Mattermost.
+GitHub's automatic **Source code** ZIP/tar downloads do not contain compiled
+`webapp/dist` files and cannot be installed as plugins.
+
 ### Deploying
 
 Based on [these instructions](https://github.com/mattermost/mattermost-plugin-starter-template#deploying-with-local-mode).

@@ -1,0 +1,89 @@
+name: Build installable plugin release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag to package (for example v0.10.0)
+        required: true
+        default: v0.10.0
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: plugin-release-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      RELEASE_TAG: ${{ inputs.tag }}
+      GOMAXPROCS: '2'
+    steps:
+      - name: Check out the release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.3'
+          cache-dependency-path: |
+            go.sum
+            build/go.sum
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: webapp/package-lock.json
+      - name: Install frozen frontend dependencies
+        run: |
+          git config --global --add url."https://github.com/".insteadOf 'ssh://git@github.com/'
+          git config --global --add url."https://github.com/".insteadOf 'git@github.com:'
+          npm ci --prefix webapp --no-audit --no-fund
+      - name: Test plugin
+        run: |
+          go test -race -p 2 ./...
+          (cd build && go test -p 2 ./...)
+          (cd webapp && npm run test-ci && npm run check-types && npm run lint)
+      - name: Build the installable plugin archive
+        run: make dist -o webapp/node_modules GO_BUILD_FLAGS=-p=2
+      - name: Verify manifest paths and checksum
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib, tarfile
+          manifest = json.loads(pathlib.Path('plugin.json').read_text())
+          assert os.environ['RELEASE_TAG'] == 'v' + manifest['version'], 'Tag must match plugin.json'
+          bundle = pathlib.Path('dist') / (manifest['id'] + '-' + manifest['version'] + '.tar.gz')
+          with tarfile.open(bundle) as archive:
+              root = manifest['id'] + '/'
+              members = {member.name: member for member in archive.getmembers()}
+              assert len({name.split('/')[0] for name in members}) == 1
+              bundled_manifest = json.load(archive.extractfile(root + 'plugin.json'))
+              assert bundled_manifest == manifest
+              paths = [manifest['webapp']['bundle_path'], *manifest['server']['executables'].values()]
+              for path in paths:
+                  member = members[root + path]
+                  assert member.isfile() and member.size > 0, 'Missing compiled plugin asset: ' + path
+                  print('Verified:', member.name, member.size)
+              for path in manifest['server']['executables'].values():
+                  assert members[root + path].mode & 0o111, 'Server binary must be executable'
+          pathlib.Path('dist/SHA256SUMS').write_text(hashlib.sha256(bundle.read_bytes()).hexdigest() + '  ' + bundle.name + '\n')
+          with open(os.environ['GITHUB_ENV'], 'a') as env:
+              env.write('PLUGIN_BUNDLE=' + bundle.name + '\n')
+          PY
+      - name: Attach and verify the installable archive before publishing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --draft --generate-notes
+          fi
+          gh release upload "$RELEASE_TAG" "dist/$PLUGIN_BUNDLE" dist/SHA256SUMS --repo "$GITHUB_REPOSITORY" --clobber
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern "$PLUGIN_BUNDLE" --dir "$RUNNER_TEMP/release-verify"
+          (cd "$RUNNER_TEMP/release-verify" && sha256sum -c "$GITHUB_WORKSPACE/dist/SHA256SUMS")
+          gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest
