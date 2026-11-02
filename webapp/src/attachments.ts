@@ -31,7 +31,7 @@ export async function encryptAttachment(file: File, senderID: string, key: Priva
     return new File([ATTACHMENT_MAGIC, JSON.stringify(envelope)], ATTACHMENT_NAME, {type: 'application/octet-stream'});
 }
 
-export async function decryptAttachment(data: ArrayBuffer, senderID: string, sender: PublicKeyMaterial, key: PrivateKeyMaterial): Promise<{name: string; blob: Blob}> {
+export async function decryptAttachment(data: ArrayBuffer, senderID: string, sender: PublicKeyMaterial, key: PrivateKeyMaterial): Promise<{name: string; type: string; blob: Blob}> {
     const encoded = new TextDecoder().decode(data);
     if (!encoded.startsWith(ATTACHMENT_MAGIC)) {
         throw new Error('Invalid encrypted attachment');
@@ -53,5 +53,35 @@ export async function decryptAttachment(data: ArrayBuffer, senderID: string, sen
     if (metadata.senderID !== senderID || typeof metadata.name !== 'string' || typeof metadata.type !== 'string') {
         throw new Error('Invalid attachment identity');
     }
-    return {name: metadata.name, blob: new Blob([plaintext.slice(4 + metadataLength)], {type: 'application/octet-stream'})};
+    return {name: metadata.name, type: metadata.type, blob: new Blob([plaintext.slice(4 + metadataLength)], {type: 'application/octet-stream'})};
+}
+
+// Preview only through an <img> with a browser-local object URL, never HTML markup.
+export function imagePreviewType(file: {name: string; type: string}): string | null {
+    const type = file.type.split(';')[0].trim().toLowerCase();
+    if ((/^image\/[a-z0-9.+-]+$/).test(type)) {
+        return type;
+    }
+    if (type && type !== 'application/octet-stream') {
+        return null;
+    }
+    const extension = file.name.split('.').pop()!.toLowerCase();
+    const types: {[extension: string]: string} = {
+        jpg: 'image/jpeg',
+        jpeg: 'image/jpeg',
+        jfif: 'image/jpeg',
+        png: 'image/png',
+        apng: 'image/apng',
+        gif: 'image/gif',
+        webp: 'image/webp',
+        avif: 'image/avif',
+        svg: 'image/svg+xml',
+        bmp: 'image/bmp',
+        ico: 'image/x-icon',
+        tif: 'image/tiff',
+        tiff: 'image/tiff',
+        heic: 'image/heic',
+        heif: 'image/heif',
+    };
+    return Object.prototype.hasOwnProperty.call(types, extension) ? types[extension] : null;
 }

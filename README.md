@@ -155,9 +155,11 @@ On Mattermost 12.0.1, uploads in E2EE channels are encrypted in your browser,
 including the original filename and MIME type. The server stores an opaque
 `encrypted.e2ee` file. Use **Decrypt and download attachment** on an encrypted
 post to verify the sender and recover the original file. A normal Mattermost
-file download returns ciphertext. Original filenames are restored only by the
-E2EE download control; inline image/video previews and server-side file search
-are unavailable. The current limit is **20 MiB per original file**. Encryption
+file download returns ciphertext. Filenames and MIME types are decrypted only
+in your browser. Images are previewed in chat after verification and local
+decryption; click an image to expand it. Browser-unsupported formats retain a
+download option. Video previews and server-side file search are unavailable.
+The current limit is **20 MiB per original file**. Encryption
 adds roughly one third to the upload size, so the server upload limit also applies.
 
 Only channel members whose public keys are available at upload time can decrypt
@@ -242,7 +244,7 @@ make dist
 The full `make` target also runs golangci-lint 2.15.0 with the migrated v2
 configuration. CI uses Go 1.27.3 and the frozen npm lockfile.
 
-The bundle is generated at `dist/com.quarkslab.e2ee-0.10.0.tar.gz`.
+The bundle is generated at `dist/com.quarkslab.e2ee-0.10.1.tar.gz`.
 Install it on a Mattermost 12.0.1 development server with plugin uploads enabled.
 For local-mode deployment, enable `ServiceSettings.EnableLocalMode` and set
 `MM_LOCALSOCKETPATH` to the server's Unix socket. For remote deployment use

@@ -1,3 +1,14 @@
+0.10.1 (02/11/2026)
+-----
+
+* Preview encrypted images directly in chat after local signature verification and decryption.
+* Expand images in a keyboard-accessible preview and download the original file.
+* Replace the encrypted-message edit link with a compact pencil button.
+* Add a full-width, theme-aware editor with clear Save changes and Cancel actions.
+* Show encryption status, keyboard hints, saving feedback, and inline errors.
+* Support Escape to cancel and Ctrl/Command+Enter to save, with focus restoration.
+* Keep the editor and attachments within the message column on narrow screens.
+
 0.10.0 (01/11/2026)
 -----
 

@@ -123,21 +123,23 @@ export const E2EEPost: React.FC<E2EEPostProps> = (props) => {
     return (
         <div className='e2ee_post'>
             <div className={headerClasses}>{'🔐'}</div>
-            <div className={postClasses}>{msgText}</div>
-            {privkey && plaintext !== null && post.user_id === currentUserID && (
-                <EncryptedEditor
+            <div className='e2ee_post_content'>
+                <div className={postClasses}>{msgText}</div>
+                {privkey && plaintext !== null && post.user_id === currentUserID && (
+                    <EncryptedEditor
+                        post={post}
+                        text={plaintext}
+                        privkey={privkey}
+                        getPubKeys={actions.getPubKeys}
+                        onSaved={setMsgSuccess}
+                    />
+                )}
+                <EncryptedAttachments
                     post={post}
-                    text={plaintext}
                     privkey={privkey}
                     getPubKeys={actions.getPubKeys}
-                    onSaved={setMsgSuccess}
                 />
-            )}
-            <EncryptedAttachments
-                post={post}
-                privkey={privkey}
-                getPubKeys={actions.getPubKeys}
-            />
+            </div>
         </div>
     );
 };
