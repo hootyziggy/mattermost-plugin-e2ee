@@ -221,6 +221,23 @@ It shows the encrypted placeholder; use the E2EE edit control instead. The serve
 rejects plaintext changes to encrypted posts. Decrypted message text stays in the
 plugin's local rendering state, rather than Mattermost's shared post object.
 
+## Searching encrypted messages
+
+Run **`/e2ee search`** to open **Search encrypted messages**. A channel-header
+action is also registered for clients that expose plugin header buttons.
+Search a word or phrase in the current channel, or select **All joined channels**
+to include accessible joined channels and direct/group messages. Search terms and
+verified decrypted results stay in browser memory; no plaintext search index is
+uploaded or saved to browser storage. The server still receives normal requests
+for channel history and sender public keys.
+
+Results link to the original message. Searches show progress and unreadable-message
+counts. Each batch checks up to 5,000 posts or finds 100 matches; use **Search older
+messages** to continue where the batch stopped. You can stop a scan, and closing
+the dialog, switching channels/accounts, or replacing your key clears the results.
+Only messages decryptable with your current key can match. File contents are not
+searched, and Mattermost's standard server-side search cannot search ciphertext.
+
 ## Development
 
 This section describes how to setup a development environment.
@@ -244,7 +261,7 @@ make dist
 The full `make` target also runs golangci-lint 2.15.0 with the migrated v2
 configuration. CI uses Go 1.27.3 and the frozen npm lockfile.
 
-The bundle is generated at `dist/com.quarkslab.e2ee-0.10.1.tar.gz`.
+The bundle is generated at `dist/com.quarkslab.e2ee-0.10.2.tar.gz`.
 Install it on a Mattermost 12.0.1 development server with plugin uploads enabled.
 For local-mode deployment, enable `ServiceSettings.EnableLocalMode` and set
 `MM_LOCALSOCKETPATH` to the server's Unix socket. For remote deployment use

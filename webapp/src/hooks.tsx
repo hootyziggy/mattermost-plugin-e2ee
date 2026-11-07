@@ -26,6 +26,7 @@ import {MyActionResult, PubKeysState} from './types';
 import {pubkeyStore, getNewChannelPubkeys, storeChannelPubkeys} from './pubkeys_storage';
 import {getE2EEPostUpdateSupported} from './compat';
 import {encryptAttachment} from './attachments';
+import {OPEN_ENCRYPTED_SEARCH} from './encrypted_search';
 import {shouldNotify} from './notifications';
 import {sendDesktopNotification} from './notification_actions';
 
@@ -259,6 +260,9 @@ export default class E2EEHooks {
         const cmdArgs = args.splice(2);
         const chanID = ctxArgs.channel_id;
         switch (cmd) {
+        case 'search':
+            window.dispatchEvent(new Event(OPEN_ENCRYPTED_SEARCH));
+            return {};
         case 'init':
             return this.handleInit(cmdArgs, ctxArgs);
 

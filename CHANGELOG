@@ -1,3 +1,12 @@
+0.10.2 (07/11/2026)
+-----
+
+* Add /e2ee search for verified, browser-side encrypted-message search.
+* Search the current channel or all joined channels without transmitting query terms.
+* Show progress, unreadable-message counts, message links, and resumable history batches.
+* Support stopping a scan and clear terms/results on close, channel/account change, or key replacement.
+* Keep search terms and decrypted results out of server-side indexes and browser storage.
+
 0.10.1 (02/11/2026)
 -----
 

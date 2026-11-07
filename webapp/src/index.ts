@@ -13,6 +13,9 @@ import {PluginRegistry} from './types/mattermost-webapp';
 import E2EEHooks from './hooks';
 import E2EEImportModal from './components/e2ee_import_modal';
 import {setE2EEPostUpdateSupported} from './compat';
+import EncryptedSearch from './components/encrypted_search';
+import SearchIcon from './components/encrypted_search/icon';
+import {OPEN_ENCRYPTED_SEARCH} from './encrypted_search';
 
 const b64 = require('base64-arraybuffer');
 
@@ -28,6 +31,13 @@ export default class Plugin {
         this.hooks.register(registry);
 
         registry.registerRootComponent(E2EEImportModal);
+        registry.registerRootComponent(() => React.createElement(EncryptedSearch, {store}));
+        registry.registerChannelHeaderButtonAction(
+            React.createElement(SearchIcon),
+            () => window.dispatchEvent(new Event(OPEN_ENCRYPTED_SEARCH)),
+            'Search encrypted messages',
+            'Search encrypted messages',
+        );
         registry.registerReducer(Reducer);
         registry.registerPostTypeComponent(E2EE_POST_TYPE, E2EEPost);
 
